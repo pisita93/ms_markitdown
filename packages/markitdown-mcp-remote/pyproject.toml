@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "markitdown-mcp-remote"
+dynamic = ["version"]
+description = 'A remotely-hostable MCP server for MarkItDown, with OAuth and SSRF protection.'
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "Adam Fourney", email = "adamfo@microsoft.com" }]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+  "mcp>=2.0.0,<3.0.0",
+  "markitdown[all]>=0.1.1,<0.2.0",
+  "starlette",
+  "uvicorn",
+  "requests",
+]
+
+[project.scripts]
+markitdown-mcp-remote = "markitdown_mcp_remote.__main__:main"
+
+[project.urls]
+Documentation = "https://github.com/microsoft/markitdown#readme"
+Source = "https://github.com/microsoft/markitdown"
+
+[tool.hatch.version]
+path = "src/markitdown_mcp_remote/__about__.py"
+
+[tool.hatch.build.targets.sdist]
+only-include = ["src/markitdown_mcp_remote"]
