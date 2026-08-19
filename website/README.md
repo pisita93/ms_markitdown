@@ -10,32 +10,85 @@ so any static host will serve it.
 
 ## Deploying to Cloudflare Pages
 
-Nothing needs to be installed and no environment variables are required — the
-build script uses only the Python standard library, which the Pages build image
-already has.
+Nothing needs to be installed and no secrets are required — the build script uses
+only the Python standard library, which the Pages build image already has.
 
-### From the dashboard
+### First time: connecting GitHub to Cloudflare
 
-**Workers & Pages → Create → Pages → Connect to Git**, pick this repository, and
-set:
+You only do this once per GitHub account. Cloudflare needs permission to read the
+repository so it can build on every push.
 
-| Setting | Value |
+1. **Create a Cloudflare account** at <https://dash.cloudflare.com/sign-up> if you
+   do not have one, and confirm the verification email. The free plan is enough —
+   this site is static assets, so there is no compute to pay for.
+
+2. In the dashboard sidebar, open **Compute (Workers & Pages)**, then
+   **Create → Pages → Connect to Git**.
+
+3. Click **Connect GitHub**. Two authorisations happen back to back, and both are
+   required:
+
+   - GitHub asks you to **authorise Cloudflare Pages** (the OAuth consent screen).
+   - GitHub then asks you to **install the Cloudflare Pages app** on an account.
+     Choose the account that owns this repository. Under *Repository access*,
+     **Only select repositories** and picking just this one is enough — Cloudflare
+     does not need access to anything else.
+
+   Click **Install & Authorize**. GitHub returns you to Cloudflare.
+
+4. Back in Cloudflare, select the repository from the list and click
+   **Begin setup**.
+
+5. Fill in the build settings:
+
+   | Setting | Value |
+   | --- | --- |
+   | Project name | anything — it becomes `<name>.pages.dev` |
+   | Production branch | **the branch that actually contains `website/`** — see below |
+   | Framework preset | None |
+   | Build command | `python3 website/build.py` |
+   | Build output directory | `website/dist` |
+   | Root directory | *(leave blank — repository root)* |
+
+   The production branch is the one thing worth pausing on. Cloudflare defaults it
+   to the repository's default branch, and the build fails with
+   `python3: can't open file 'website/build.py'` if that branch does not have this
+   directory yet. Either point it at the branch that does, or merge to the default
+   branch first and leave it alone.
+
+6. Click **Save and Deploy**.
+
+The first build takes a couple of minutes, most of it downloading the pinned
+wheels; later builds reuse Cloudflare's cache and are quicker. When it finishes
+the site is live at `https://<project>.pages.dev`.
+
+From then on every push to the production branch redeploys the site, and pushes
+to any other branch get their own preview URL.
+
+### Python on the build image
+
+The build script runs on `python3` and needs Python 3.8 or newer. Cloudflare's
+current build image provides that by default. If a build ever fails with a syntax
+error from `build.py`, an old image is being used — set an environment variable
+in **Settings → Environment variables**:
+
+| Variable | Value |
 | --- | --- |
-| Framework preset | None |
-| Build command | `python3 website/build.py` |
-| Build output directory | `website/dist` |
-| Root directory | *(leave blank — repository root)* |
+| `PYTHON_VERSION` | `3.12` |
 
-Save and deploy. The first build takes a couple of minutes, most of it spent
-downloading the pinned wheels. The site is then live at
-`https://<project>.pages.dev`, and every push to the branch redeploys it.
+### Without connecting GitHub
 
-### With Wrangler
+If you would rather not grant repository access, deploy the built directory
+straight from your machine. Cloudflare only asks you to log in through the
+browser once:
 
 ```bash
 python3 website/build.py
 npx wrangler pages deploy website/dist --project-name markitdown-web
 ```
+
+The trade-off is that nothing redeploys on its own — you run this again after
+every change.
 
 ## Running it locally
 
