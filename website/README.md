@@ -50,9 +50,10 @@ repository so it can build on every push.
    | Build output directory | `website/dist` |
    | Root directory | *(leave blank — repository root)* |
 
-   The repository ships a `wrangler.toml` setting the output directory, so newer
-   Cloudflare projects that use a deploy command rather than an output-directory
-   field pick it up without further configuration.
+   The repository ships a `wrangler.toml` pointing at `website/dist`, so newer
+   Cloudflare projects that run a deploy command rather than reading an
+   output-directory field pick it up without further configuration. It is written
+   for a Workers project; see the troubleshooting note below if yours is Pages.
 
    The production branch is the one thing worth pausing on. Cloudflare defaults it
    to the repository's default branch, and the build fails with
@@ -64,7 +65,8 @@ repository so it can build on every push.
 
 The first build takes a couple of minutes, most of it downloading the pinned
 wheels; later builds reuse Cloudflare's cache and are quicker. When it finishes
-the site is live at `https://<project>.pages.dev`.
+the site is live — at `https://<project>.pages.dev` for a Pages project, or
+`https://<project>.<your-subdomain>.workers.dev` for a Workers one.
 
 From then on every push to the production branch redeploys the site, and pushes
 to any other branch get their own preview URL.
@@ -85,29 +87,50 @@ Wrangler tries to guess where the static files are, and it only looks in
 conventional places — `./dist`, `./public`, `./build`. This project builds to
 `website/dist`, which it never finds.
 
-The `wrangler.toml` in the repository root already answers this — it sets
-`pages_build_output_dir = "website/dist"`, which is where Wrangler looks before
-falling back to guessing. If you are seeing this error, that file is either
-missing from the branch being built or the deploy is running somewhere it is not
-picked up. Naming the directory on the command line works regardless. In
-**Settings → Build**:
+The `wrangler.toml` in the repository root answers this, but **it has to match
+the kind of project you created**, and the two flows are not interchangeable:
+
+| Your deploy command | Project kind | Config key |
+| --- | --- | --- |
+| `npx wrangler deploy` | Workers | `[assets] directory` |
+| `npx wrangler pages deploy` | Pages | `pages_build_output_dir` |
+
+The committed config is the **Workers** form, matching Cloudflare's current
+"import a repository" flow. Running `wrangler deploy` against a Pages-shaped
+config fails with:
+
+```
+▲ [WARNING] It seems that you have run `wrangler deploy` on a Pages project,
+            `wrangler pages deploy` should be used instead.
+✘ [ERROR] Missing entry-point to Worker script or to assets directory
+```
+
+and running `wrangler pages deploy` with no directory and no
+`pages_build_output_dir` fails with:
+
+```
+✘ [ERROR] Could not detect a directory containing static files
+          (e.g. html, css and js) for the project
+```
+
+If you are on Pages rather than Workers, either replace the `[assets]` block
+with `pages_build_output_dir = "website/dist"`, or name the directory on the
+command line, which works regardless of config:
 
 ```
 npx wrangler pages deploy website/dist
 ```
 
-Also confirm the build command above it is `python3 website/build.py`. If the
-build command is missing, `website/dist` is never created and the deploy fails
-with the same message for a different reason.
+Also confirm the build command is `python3 website/build.py`. If it is missing,
+`website/dist` is never created and the deploy fails for that reason instead.
 
 One coupling to know about: `name` in `wrangler.toml` must match the Cloudflare
-Pages project being deployed to. Rename the project in the dashboard and this
-file has to change with it, or the deploy fails with a project-not-found error.
-Passing `--project-name` on the deploy command overrides it.
+project being deployed to. Rename the project in the dashboard and this file has
+to change with it, or the deploy fails with a project-not-found error.
 
 Projects created through the older **Connect to Git** flow have a plain *Build
-output directory* field instead of a deploy command; setting that to
-`website/dist` is all they need.
+output directory* field and no deploy command; setting that to `website/dist` is
+all they need.
 
 ### Python on the build image
 
