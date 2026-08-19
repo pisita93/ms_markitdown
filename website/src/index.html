@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MarkItDown — everything becomes Markdown</title>
+<meta name="description" content="Convert PDF, Word, Excel, PowerPoint, EPUB and more to Markdown. Microsoft's MarkItDown, compiled to WebAssembly and running entirely in your browser — nothing is uploaded.">
+<meta name="color-scheme" content="light dark">
+
+<meta property="og:title" content="MarkItDown — everything becomes Markdown">
+<meta property="og:description" content="Microsoft's MarkItDown running entirely in your browser. No upload, no server.">
+<meta property="og:type" content="website">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%2317150f'/><text y='74' x='50' font-size='68' font-family='Georgia,serif' fill='%23f2efe6' text-anchor='middle'>M</text></svg>">
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+
+<header class="masthead">
+  <div class="masthead-rule"><span>Microsoft</span><span>Open Source · MIT</span><span data-version-slot>markitdown</span></div>
+  <h1 class="wordmark">
+    <span class="wordmark-line" style="--i:0">MarkIt</span><span class="wordmark-line accent" style="--i:1">Down</span>
+  </h1>
+  <p class="deck" style="--i:2">
+    Anything you can open, rendered as Markdown an LLM can actually read.
+    <em>PDF, Word, Excel, PowerPoint, EPUB, Outlook mail, notebooks, web pages.</em>
+  </p>
+  <div class="claim" style="--i:3">
+    <span class="dot" data-boot-dot></span>
+    <span data-boot-line>Warming up the Python runtime…</span>
+  </div>
+</header>
+
+<main>
+  <!-- ---------------------------------------------------------------- -->
+  <section class="stage" id="convert">
+    <div class="stage-grid">
+
+      <div class="sheet-wrap">
+        <div class="sheet" id="dropzone" tabindex="0" role="button"
+             aria-label="Choose files to convert, or drop them here">
+          <div class="sheet-fold" aria-hidden="true"></div>
+          <div class="sheet-body">
+            <p class="sheet-kicker">Drop a file</p>
+            <p class="sheet-hint">or <span class="underline">browse</span> · paste with ⌘V · several at once is fine</p>
+            <p class="sheet-privacy">Your files stay on this machine. There is no server to upload them to.</p>
+          </div>
+          <input type="file" id="fileInput" multiple hidden
+                 aria-label="Choose files to convert">
+        </div>
+
+        <div class="samples" data-samples hidden>
+          <span class="samples-label">No file handy?</span>
+          <div class="samples-row" data-samples-row></div>
+        </div>
+      </div>
+
+      <aside class="console" aria-live="polite">
+        <div class="console-head">
+          <span>runtime</span>
+          <span data-runtime-label>booting</span>
+        </div>
+        <ol class="console-log" data-log></ol>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section class="results" id="results" hidden>
+    <div class="results-head">
+      <h2>Converted</h2>
+      <div class="results-actions">
+        <button type="button" class="btn ghost" data-clear>Clear</button>
+      </div>
+    </div>
+
+    <div class="results-grid">
+      <ol class="queue" data-queue></ol>
+
+      <div class="output">
+        <div class="output-head">
+          <div class="tabs" role="tablist">
+            <button type="button" class="tab is-active" data-view="markdown" role="tab">Markdown</button>
+            <button type="button" class="tab" data-view="preview" role="tab">Preview</button>
+          </div>
+          <div class="output-actions">
+            <span class="meta" data-output-meta></span>
+            <button type="button" class="btn" data-copy>Copy</button>
+            <button type="button" class="btn" data-download>Download .md</button>
+          </div>
+        </div>
+        <div class="output-body">
+          <pre class="code" data-markdown><code></code></pre>
+          <article class="preview" data-preview hidden></article>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section class="matrix" id="formats">
+    <div class="section-head">
+      <h2>What it converts here</h2>
+      <p>
+        MarkItDown's converters are the same ones the command line uses — this page just runs them
+        in WebAssembly. Two of them need programs that do not exist in a browser, and rather than
+        hand you an empty file, the page says so.
+      </p>
+    </div>
+    <div class="matrix-grid" data-matrix></div>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section class="how" id="how">
+    <div class="section-head">
+      <h2>How this works</h2>
+    </div>
+    <ol class="steps">
+      <li>
+        <h3>Real CPython, not a rewrite</h3>
+        <p>
+          Pyodide is CPython compiled to WebAssembly. The page installs a wheel built from
+          <code>packages/markitdown</code> in this repository, so the converter running on your
+          file is this project's actual source — not a JavaScript reimplementation of it.
+        </p>
+      </li>
+      <li>
+        <h3>Two dependencies get stand-ins</h3>
+        <p>
+          MarkItDown detects file types with <code>magika</code>, a neural classifier that needs
+          ONNX Runtime; <code>pdfplumber</code> pulls in <code>pypdfium2</code> for page rendering.
+          Neither has a WebAssembly build. The site substitutes a signature-based sniffer for the
+          first and an import stub for the second — MarkItDown never renders PDF pages, so nothing
+          is lost. Text and table extraction are untouched.
+        </p>
+      </li>
+      <li>
+        <h3>Loaded only when needed</h3>
+        <p>
+          The cold start is the Python runtime plus a few hundred kilobytes. Heavier converters
+          arrive on demand: opening a spreadsheet is what fetches pandas, opening a PDF is what
+          fetches pdfminer. Convert only HTML and you never pay for either.
+        </p>
+      </li>
+      <li>
+        <h3>Nothing leaves the tab</h3>
+        <p>
+          There is no API and no origin server doing work — the deployment is static files. Your
+          document is read into a WebAssembly heap in your own browser and stays there.
+        </p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section class="cli" id="cli">
+    <div class="section-head">
+      <h2>Want the full thing?</h2>
+      <p>
+        Images and audio need <code>exiftool</code> and <code>ffmpeg</code>; captions and
+        transcripts need a model. Those are a local install away.
+      </p>
+    </div>
+    <pre class="shell"><code><span class="c"># the converters this page runs, plus the ones it can't</span>
+pip install 'markitdown[all]'
+
+<span class="c"># one file</span>
+markitdown paper.pdf &gt; paper.md
+
+<span class="c"># or from Python</span>
+<span class="k">from</span> markitdown <span class="k">import</span> MarkItDown
+MarkItDown().convert(<span class="s">"paper.pdf"</span>).markdown</code></pre>
+  </section>
+</main>
+
+<footer>
+  <div class="foot-rule"></div>
+  <div class="foot-grid">
+    <p>
+      <strong>MarkItDown</strong> is a Microsoft open-source project, MIT licensed.
+      This page is a static build of it — no backend.
+    </p>
+    <p class="foot-meta" data-footer-meta></p>
+  </div>
+</footer>
+
+<noscript>
+  <div class="noscript">This page converts your files locally using WebAssembly, which needs JavaScript enabled.</div>
+</noscript>
+
+<script src="assets/app.js" type="module"></script>
+</body>
+</html>
