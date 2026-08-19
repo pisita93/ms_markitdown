@@ -10,32 +10,152 @@ so any static host will serve it.
 
 ## Deploying to Cloudflare Pages
 
-Nothing needs to be installed and no environment variables are required — the
-build script uses only the Python standard library, which the Pages build image
-already has.
+Nothing needs to be installed and no secrets are required — the build script uses
+only the Python standard library, which the Pages build image already has.
 
-### From the dashboard
+### First time: connecting GitHub to Cloudflare
 
-**Workers & Pages → Create → Pages → Connect to Git**, pick this repository, and
-set:
+You only do this once per GitHub account. Cloudflare needs permission to read the
+repository so it can build on every push.
 
-| Setting | Value |
+1. **Create a Cloudflare account** at <https://dash.cloudflare.com/sign-up> if you
+   do not have one, and confirm the verification email. The free plan is enough —
+   this site is static assets, so there is no compute to pay for.
+
+2. In the dashboard sidebar, open **Compute (Workers & Pages)**, then
+   **Create → Pages → Connect to Git**.
+
+3. Click **Connect GitHub**. Two authorisations happen back to back, and both are
+   required:
+
+   - GitHub asks you to **authorise Cloudflare Pages** (the OAuth consent screen).
+   - GitHub then asks you to **install the Cloudflare Pages app** on an account.
+     Choose the account that owns this repository. Under *Repository access*,
+     **Only select repositories** and picking just this one is enough — Cloudflare
+     does not need access to anything else.
+
+   Click **Install & Authorize**. GitHub returns you to Cloudflare.
+
+4. Back in Cloudflare, select the repository from the list and click
+   **Begin setup**.
+
+5. Fill in the build settings:
+
+   | Setting | Value |
+   | --- | --- |
+   | Project name | anything — it becomes `<name>.pages.dev` |
+   | Production branch | **the branch that actually contains `website/`** — see below |
+   | Framework preset | None |
+   | Build command | `python3 website/build.py` |
+   | Build output directory | `website/dist` |
+   | Root directory | *(leave blank — repository root)* |
+
+   The repository ships a `wrangler.toml` pointing at `website/dist`, so newer
+   Cloudflare projects that run a deploy command rather than reading an
+   output-directory field pick it up without further configuration. It is written
+   for a Workers project; see the troubleshooting note below if yours is Pages.
+
+   The production branch is the one thing worth pausing on. Cloudflare defaults it
+   to the repository's default branch, and the build fails with
+   `python3: can't open file 'website/build.py'` if that branch does not have this
+   directory yet. Either point it at the branch that does, or merge to the default
+   branch first and leave it alone.
+
+6. Click **Save and Deploy**.
+
+The first build takes a couple of minutes, most of it downloading the pinned
+wheels; later builds reuse Cloudflare's cache and are quicker. When it finishes
+the site is live — at `https://<project>.pages.dev` for a Pages project, or
+`https://<project>.<your-subdomain>.workers.dev` for a Workers one.
+
+From then on every push to the production branch redeploys the site, and pushes
+to any other branch get their own preview URL.
+
+### If the deploy step fails to find the site
+
+A build that ends like this has built fine but failed at the upload step:
+
+```
+✘ [ERROR] Could not detect a directory containing static files
+          (e.g. html, css and js) for the project
+Failed: error occurred while running deploy command
+```
+
+Cloudflare's newer "import a repository" flow runs a **build command** and then a
+separate **deploy command**. When the deploy command has no directory argument,
+Wrangler tries to guess where the static files are, and it only looks in
+conventional places — `./dist`, `./public`, `./build`. This project builds to
+`website/dist`, which it never finds.
+
+The `wrangler.toml` in the repository root answers this, but **it has to match
+the kind of project you created**, and the two flows are not interchangeable:
+
+| Your deploy command | Project kind | Config key |
+| --- | --- | --- |
+| `npx wrangler deploy` | Workers | `[assets] directory` |
+| `npx wrangler pages deploy` | Pages | `pages_build_output_dir` |
+
+The committed config is the **Workers** form, matching Cloudflare's current
+"import a repository" flow. Running `wrangler deploy` against a Pages-shaped
+config fails with:
+
+```
+▲ [WARNING] It seems that you have run `wrangler deploy` on a Pages project,
+            `wrangler pages deploy` should be used instead.
+✘ [ERROR] Missing entry-point to Worker script or to assets directory
+```
+
+and running `wrangler pages deploy` with no directory and no
+`pages_build_output_dir` fails with:
+
+```
+✘ [ERROR] Could not detect a directory containing static files
+          (e.g. html, css and js) for the project
+```
+
+If you are on Pages rather than Workers, either replace the `[assets]` block
+with `pages_build_output_dir = "website/dist"`, or name the directory on the
+command line, which works regardless of config:
+
+```
+npx wrangler pages deploy website/dist
+```
+
+Also confirm the build command is `python3 website/build.py`. If it is missing,
+`website/dist` is never created and the deploy fails for that reason instead.
+
+One coupling to know about: `name` in `wrangler.toml` must match the Cloudflare
+project being deployed to. Rename the project in the dashboard and this file has
+to change with it, or the deploy fails with a project-not-found error.
+
+Projects created through the older **Connect to Git** flow have a plain *Build
+output directory* field and no deploy command; setting that to `website/dist` is
+all they need.
+
+### Python on the build image
+
+The build script runs on `python3` and needs Python 3.8 or newer. Cloudflare's
+current build image provides that by default. If a build ever fails with a syntax
+error from `build.py`, an old image is being used — set an environment variable
+in **Settings → Environment variables**:
+
+| Variable | Value |
 | --- | --- |
-| Framework preset | None |
-| Build command | `python3 website/build.py` |
-| Build output directory | `website/dist` |
-| Root directory | *(leave blank — repository root)* |
+| `PYTHON_VERSION` | `3.12` |
 
-Save and deploy. The first build takes a couple of minutes, most of it spent
-downloading the pinned wheels. The site is then live at
-`https://<project>.pages.dev`, and every push to the branch redeploys it.
+### Without connecting GitHub
 
-### With Wrangler
+If you would rather not grant repository access, deploy the built directory
+straight from your machine. Cloudflare only asks you to log in through the
+browser once:
 
 ```bash
 python3 website/build.py
 npx wrangler pages deploy website/dist --project-name markitdown-web
 ```
+
+The trade-off is that nothing redeploys on its own — you run this again after
+every change.
 
 ## Running it locally
 
