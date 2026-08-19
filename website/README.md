@@ -65,6 +65,49 @@ the site is live at `https://<project>.pages.dev`.
 From then on every push to the production branch redeploys the site, and pushes
 to any other branch get their own preview URL.
 
+### If the deploy step fails to find the site
+
+A build that ends like this has built fine but failed at the upload step:
+
+```
+✘ [ERROR] Could not detect a directory containing static files
+          (e.g. html, css and js) for the project
+Failed: error occurred while running deploy command
+```
+
+Cloudflare's newer "import a repository" flow runs a **build command** and then a
+separate **deploy command**. When the deploy command has no directory argument,
+Wrangler tries to guess where the static files are, and it only looks in
+conventional places — `./dist`, `./public`, `./build`. This project builds to
+`website/dist`, which it never finds.
+
+Name the directory explicitly. In **Settings → Build**, set the deploy command to:
+
+```
+npx wrangler pages deploy website/dist
+```
+
+and make sure the build command above it is `python3 website/build.py`. If the
+build command is missing, `website/dist` never gets created and the deploy fails
+the same way.
+
+Alternatively, commit a Wrangler configuration file so the bare command works.
+Create `wrangler.toml` in the repository root:
+
+```toml
+name = "your-pages-project-name"   # must match the project name in Cloudflare
+pages_build_output_dir = "website/dist"
+```
+
+The `name` has to match the existing Pages project exactly — Wrangler uses it to
+decide what to deploy to, so a mismatch fails with a project-not-found error.
+Passing the directory on the command line avoids that coupling, which is why it
+is the simpler of the two.
+
+Projects created through the older **Connect to Git** flow have a plain *Build
+output directory* field instead of a deploy command; setting that to
+`website/dist` is all they need.
+
 ### Python on the build image
 
 The build script runs on `python3` and needs Python 3.8 or newer. Cloudflare's
