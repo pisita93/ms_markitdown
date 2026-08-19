@@ -50,6 +50,10 @@ repository so it can build on every push.
    | Build output directory | `website/dist` |
    | Root directory | *(leave blank — repository root)* |
 
+   The repository ships a `wrangler.toml` setting the output directory, so newer
+   Cloudflare projects that use a deploy command rather than an output-directory
+   field pick it up without further configuration.
+
    The production branch is the one thing worth pausing on. Cloudflare defaults it
    to the repository's default branch, and the build fails with
    `python3: can't open file 'website/build.py'` if that branch does not have this
@@ -81,28 +85,25 @@ Wrangler tries to guess where the static files are, and it only looks in
 conventional places — `./dist`, `./public`, `./build`. This project builds to
 `website/dist`, which it never finds.
 
-Name the directory explicitly. In **Settings → Build**, set the deploy command to:
+The `wrangler.toml` in the repository root already answers this — it sets
+`pages_build_output_dir = "website/dist"`, which is where Wrangler looks before
+falling back to guessing. If you are seeing this error, that file is either
+missing from the branch being built or the deploy is running somewhere it is not
+picked up. Naming the directory on the command line works regardless. In
+**Settings → Build**:
 
 ```
 npx wrangler pages deploy website/dist
 ```
 
-and make sure the build command above it is `python3 website/build.py`. If the
-build command is missing, `website/dist` never gets created and the deploy fails
-the same way.
+Also confirm the build command above it is `python3 website/build.py`. If the
+build command is missing, `website/dist` is never created and the deploy fails
+with the same message for a different reason.
 
-Alternatively, commit a Wrangler configuration file so the bare command works.
-Create `wrangler.toml` in the repository root:
-
-```toml
-name = "your-pages-project-name"   # must match the project name in Cloudflare
-pages_build_output_dir = "website/dist"
-```
-
-The `name` has to match the existing Pages project exactly — Wrangler uses it to
-decide what to deploy to, so a mismatch fails with a project-not-found error.
-Passing the directory on the command line avoids that coupling, which is why it
-is the simpler of the two.
+One coupling to know about: `name` in `wrangler.toml` must match the Cloudflare
+Pages project being deployed to. Rename the project in the dashboard and this
+file has to change with it, or the deploy fails with a project-not-found error.
+Passing `--project-name` on the deploy command overrides it.
 
 Projects created through the older **Connect to Git** flow have a plain *Build
 output directory* field instead of a deploy command; setting that to

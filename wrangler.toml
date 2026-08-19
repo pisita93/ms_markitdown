@@ -1,0 +1,17 @@
+# Cloudflare configuration for the MarkItDown web playground in website/.
+#
+# This exists so `wrangler pages deploy` works without arguments. Without it,
+# Wrangler tries to guess where the built site is and only looks in conventional
+# roots (./dist, ./public, ./build), so it never finds website/dist and the
+# deploy fails with "Could not detect a directory containing static files".
+#
+# Build the directory this points at first:
+#
+#     python3 website/build.py
+#
+# `name` must match the Cloudflare Pages project being deployed to. Rename the
+# project in the dashboard and this has to change with it, or the deploy fails
+# with a project-not-found error.
+
+name = "markitdown-web"
+pages_build_output_dir = "website/dist"
