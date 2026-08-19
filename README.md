@@ -287,6 +287,23 @@ docker build -t markitdown:latest .
 docker run --rm -i markitdown:latest < ~/your-file.pdf > output.md
 ```
 
+### In the browser
+
+`website/` is a static site that runs MarkItDown client-side under Pyodide
+(CPython compiled to WebAssembly), with no backend at all — files are converted
+on the visitor's own machine and never uploaded. It is set up to deploy to
+Cloudflare Pages:
+
+```sh
+python3 website/build.py                 # writes website/dist
+python3 -m http.server 8788 --directory website/dist
+```
+
+Everything with pure-Python dependencies works there, which is every format
+except images and audio — those need `exiftool` and `ffmpeg`, which a browser
+cannot run. See [website/README.md](website/README.md) for deployment settings
+and details.
+
 ## Contributing
 
 This project welcomes contributions and suggestions. Most contributions require you to agree to a
